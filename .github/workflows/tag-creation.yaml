@@ -26,7 +26,7 @@ jobs:
       - name: Update tag in swaggerdoc
         run: | 
           echo "VERSION=$(echo ${{ github.ref }}" >> $GITHUB_ENV
-          echo "NEW_VERSION=$(echo ${{ github.ref }} | sed -e 's/+.*$//')" >> $GITHUB_ENV
+          echo "NEW_VERSION=$(echo ${{ github.ref }} | sed -e 's/refs\/tags\///;s/+.*$//')" >> $GITHUB_ENV
           sed -i -e "s/version: .*/version: \"v$NEW_VERSION\"/" ./aruna/api/storage/services/v2/project_service.proto 
       - name: Commit files
         run: |
