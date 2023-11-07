@@ -1,14 +1,7 @@
 name: create_publish_release
 on: 
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Semver release version'
-        required: true
-        type: string
-      message:
-        description: 'Message for the new tag'     
-        required: false
+  release:
+    types: [created]
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -32,14 +25,15 @@ jobs:
           git submodule update --remote --recursive
       - name: Update tag in swaggerdoc
         run: | 
-          sed -i -e 's/version: .*/version: "${{ inputs.tag }}"/' ./aruna/api/storage/services/v2/project_service.proto 
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && NEW_VERSION=$(echo $VERSION | sed -e 's/+.*$//')
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          sed -i -e "s/version: .*/version: \"v$NEW_VERSION\"/" ./aruna/api/storage/services/v2/project_service.proto 
       - name: Commit files
         run: |
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add -A
-          git diff-index --quiet HEAD || git commit -m "Update version to ${{ inputs.tag }}" -a
-          git tag -a v${{ inputs.tag }} -m "Published new version: ${{ inputs.tag }}. Changes: ${{ inputs.message }}."
+          git diff-index --quiet HEAD || git commit -m "Update version to ${{ NEW_VERSION }}" -a
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
@@ -47,39 +41,6 @@ jobs:
           tags: true
           force: true
       - name: Try delete (old) release
-        run: gh release delete v${{ inputs.tag }}
-        continue-on-error: true
+        run: gh release edit $VERSION --tag $NEW_VERSION --draft=false --prerelease=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create release
-        run: gh release create v${{ inputs.tag }} --title "v${{ inputs.tag }}" --notes "${{ inputs.message }}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Repository Dispatch (go)
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.ARUNA_ACCESS_TOKEN }}
-          repository: ArunaStorage/go-api
-          event-type: publish
-          client-payload: '{"version": "${{ inputs.tag }}", "message": "${{ inputs.message }}"}'
-      - name: Repository Dispatch (rust)
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.ARUNA_ACCESS_TOKEN }}
-          repository: ArunaStorage/rust-api
-          event-type: publish
-          client-payload: '{"version": "${{ inputs.tag }}", "message": "${{ inputs.message }}"}'
-      - name: Repository Dispatch (python)
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.ARUNA_ACCESS_TOKEN }}
-          repository: ArunaStorage/python-api
-          event-type: publish
-          client-payload: '{"version": "${{ inputs.tag }}", "message": "${{ inputs.message }}"}'
-      - name: Repository Dispatch (java)
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.ARUNA_ACCESS_TOKEN }}
-          repository: ArunaStorage/java-api
-          event-type: publish
-          client-payload: '{"version": "${{ inputs.tag }}", "message": "${{ inputs.message }}"}'
