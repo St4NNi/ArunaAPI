@@ -23,10 +23,12 @@ jobs:
       #     git pull --recurse-submodules
       #     git submodule update --init --recursive
       #     git submodule update --remote --recursive
-      - name: Update tag in swaggerdoc
+      - name: Grab version tags
         run: | 
           echo VERSION=$(echo ${{ github.ref }} | sed -e 's/refs\/tags\///;') >> $GITHUB_ENV
           echo NEW_VERSION=$(echo ${{ github.ref }} | sed -e 's/refs\/tags\///;s/+.*$//') >> $GITHUB_ENV
+      - name: Set version
+        run: |
           sed -i -e "s/version: .*/version: \"v$NEW_VERSION\"/" ./aruna/api/storage/services/v2/project_service.proto 
       - name: Commit files
         run: |
